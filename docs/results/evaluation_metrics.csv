@@ -1,0 +1,26 @@
+Metric,Value
+Total EDF Discovered,60.0
+Successfully Evaluated,60.0
+Skipped,0.0
+Corrupted,0.0
+Completion Rate,100.0
+Accuracy,0.5
+Precision,0.5
+Recall,1.0
+Specificity,0.0
+F1-score,0.6666666666666666
+ROC-AUC,0.5122222222222221
+Balanced Accuracy,0.5
+MCC,0.0
+Cohen's Kappa,0.0
+Log Loss,0.7716357021937583
+PR AUC,0.48885483779282984
+TP,30.0
+TN,0.0
+FP,30.0
+FN,0.0
+Mean Confidence,0.6829731812079748
+Median Confidence,0.7226719558238983
+Standard Deviation,0.06269902236478861
+Minimum Confidence,0.5078970193862915
+Maximum Confidence,0.7310032248497009

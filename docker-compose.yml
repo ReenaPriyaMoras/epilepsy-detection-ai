@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL Database Service
+  postgres:
+    image: postgres:16-alpine
+    container_name: epidetect-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: epilepsy_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_secure_password_2026
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d epilepsy_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. FastAPI + PyTorch Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: epidetect-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PROJECT_NAME: "Epilepsy Detection API"
+      ENVIRONMENT: "production"
+      PORT: 8000
+      DATABASE_URL: "postgresql://postgres:postgres_secure_password_2026@postgres:5432/epilepsy_db"
+      JWT_SECRET: "epilepsy-detection-ai-clinical-secret-key-2026"
+      BACKEND_CORS_ORIGINS: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000"
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend_logs:/app/backend/logs
+
+volumes:
+  postgres_data:
+    driver: local
+  backend_logs:
+    driver: local

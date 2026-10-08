@@ -1,0 +1,42 @@
+{
+    "dataset": {
+        "total_discovered": 60,
+        "successfully_evaluated": 60,
+        "skipped": 0,
+        "corrupted": 0,
+        "completion_rate": 100.0
+    },
+    "performance": {
+        "Average Preprocessing Time (s)": 7.006940583333199,
+        "Average Inference Time (s)": 0.010693088331026956,
+        "Average Explainability Time (s)": 0.04825137000007089,
+        "Average Total Response Time (s)": 7.066767965002994,
+        "Minimum Processing Time (s)": 3.7030099000257906,
+        "Maximum Processing Time (s)": 13.51775220001582,
+        "Standard Deviation Time (s)": 2.3118926732894955,
+        "Peak Memory Spike (MB)": 53.37890625,
+        "Average CPU Usage (%)": 31.716666666666665
+    },
+    "metrics": {
+        "Accuracy": 0.5,
+        "Precision": 0.5,
+        "Recall": 1.0,
+        "Specificity": 0.0,
+        "F1-score": 0.6666666666666666,
+        "ROC-AUC": 0.5122222222222221,
+        "Balanced Accuracy": 0.5,
+        "MCC": 0.0,
+        "Cohen's Kappa": 0.0,
+        "Log Loss": 0.7716357021937583,
+        "PR AUC": 0.48885483779282984,
+        "TP": 30,
+        "TN": 0,
+        "FP": 30,
+        "FN": 0,
+        "Mean Confidence": 0.6829731812079748,
+        "Median Confidence": 0.7226719558238983,
+        "Standard Deviation": 0.06269902236478861,
+        "Minimum Confidence": 0.5078970193862915,
+        "Maximum Confidence": 0.7310032248497009
+    }
+}

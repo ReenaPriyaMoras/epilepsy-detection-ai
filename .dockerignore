@@ -1,0 +1,31 @@
+# Git & IDE
+.git/
+.github/
+.vscode/
+.idea/
+
+# Node & Frontend
+frontend/
+node_modules/
+dist/
+*.zip
+
+# Python & Virtual Environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs & Temporary Files
+backend/logs/*.log
+backend/logs/*
+*.tmp
+*.log
+
+# Large Datasets (Not needed inside production container, weights are in ml/epieeg/weights/)
+backend/ml/epieeg/dataset/
