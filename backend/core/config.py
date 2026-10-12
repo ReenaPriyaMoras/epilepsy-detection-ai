@@ -8,9 +8,16 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = "development"
     PORT: int = 8000
+    APP_VERSION: str = "2.1.0"
     
     # Database URL: Supports SQLite locally and PostgreSQL on Railway/Render
     DATABASE_URL: Optional[str] = None
+    
+    # Request & Inference Settings
+    INFERENCE_TIMEOUT_SECONDS: float = 60.0
+    MAX_UPLOAD_FILE_SIZE_MB: int = 100
+    ANALYSIS_WINDOW_SECONDS: float = 30.0
+    ENABLE_XAI: bool = True
     
     # JWT Authentication settings
     JWT_SECRET: str = "epilepsy-detection-ai-clinical-secret-key-2026"

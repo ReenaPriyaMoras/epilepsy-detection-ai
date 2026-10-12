@@ -21,22 +21,30 @@ BACKUP_COUNT = 5
 ENCODING = "utf-8"
 
 def _setup_logger(name: str, log_file: Path, level=logging.INFO) -> logging.Logger:
-    """Sets up a logger with a rotating file handler."""
+    """Sets up a logger with rotating file handler and console stream handler."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
     
     if not logger.handlers:
-        handler = RotatingFileHandler(
-            str(log_file),
-            maxBytes=MAX_BYTES,
-            backupCount=BACKUP_COUNT,
-            encoding=ENCODING
-        )
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            '%(asctime)s - %(name)s - [%(levelname)s] - %(message)s'
         )
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
+        
+        try:
+            handler = RotatingFileHandler(
+                str(log_file),
+                maxBytes=MAX_BYTES,
+                backupCount=BACKUP_COUNT,
+                encoding=ENCODING
+            )
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+        except Exception:
+            pass
+            
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
         
     return logger
 

@@ -1,12 +1,22 @@
 import axios from "axios";
 
-const BASE_URL =
-    import.meta.env.VITE_API_URL ||
-    "http://127.0.0.1:8000/api/v1";
+const getBaseUrl = () => {
+    let url =
+        import.meta.env.VITE_API_URL ||
+        import.meta.env.VITE_API_BASE_URL ||
+        "http://127.0.0.1:8000/api/v1";
+    url = url.trim().replace(/\/+$/, "");
+    if (!url.endsWith("/api/v1")) {
+        url = `${url}/api/v1`;
+    }
+    return url;
+};
+
+const BASE_URL = getBaseUrl();
 
 const API = axios.create({
     baseURL: BASE_URL,
-    timeout: 30000, // 30s timeout for EDF upload and inference
+    timeout: 60000, // 60s timeout for EDF upload, signal preprocessing, and model inference
     headers: {
         Accept: "application/json",
     },
@@ -34,10 +44,12 @@ API.interceptors.response.use(
         const customError = {
             status: error.response?.status || 500,
             message:
-                error.response?.data?.message ||
                 error.response?.data?.detail ||
-                (error.code === "ECONNABORTED" ? "Request timed out. Please try again." : "Network connection error."),
+                error.response?.data?.message ||
+                (error.code === "ECONNABORTED" ? "Request timed out while processing EEG recording. Please try again." : "Network connection error."),
             data: error.response?.data || null,
+            response: error.response,
+            request: error.request,
         };
         return Promise.reject(customError);
     }
@@ -63,6 +75,20 @@ export const healthcareAPI = {
     predictEEG: async (formData, onUploadProgress) => {
         const response = await API.post(
             "/inference/epieeg",
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+                onUploadProgress,
+            }
+        );
+        return response.data;
+    },
+
+    predictBonn: async (formData, onUploadProgress) => {
+        const response = await API.post(
+            "/inference/predict",
             formData,
             {
                 headers: {

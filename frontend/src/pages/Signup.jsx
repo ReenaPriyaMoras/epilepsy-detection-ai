@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Brain, Lock, Mail, User, ArrowRight, Activity, ShieldCheck } from 'lucide-react';
+import { healthcareAPI } from '../services/api';
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const Signup = () => {
 
   const strength = calculatePasswordStrength(formData.password);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
@@ -36,11 +37,19 @@ const Signup = () => {
     }
     setError('');
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    
+    try {
+      await healthcareAPI.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      });
       navigate('/login');
-    }, 1500);
+    } catch (err) {
+      setError(err.message || "Failed to register account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

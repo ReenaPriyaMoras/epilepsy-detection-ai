@@ -104,13 +104,23 @@ def handle_prescription(data: Optional[PrescriptionRequest] = None):
         ]
     }
 
+from core.security import create_access_token
+
 @router.post("/login")
 @router.post("/auth/login")
 def login(req: Optional[LoginRequest] = None):
     doc_id = req.doctorId if req and req.doctorId else "Doctor"
+    email = req.email if req and req.email else f"{doc_id.lower()}@epilepsy-ai.org"
+    
+    token = create_access_token({
+        "sub": doc_id,
+        "email": email,
+        "role": "Neurologist"
+    })
+    
     return {
         "status": "success",
-        "token": "clinical-jwt-token-demo",
+        "token": token,
         "doctorName": f"Dr. {doc_id}",
         "role": "Neurologist"
     }
@@ -118,10 +128,20 @@ def login(req: Optional[LoginRequest] = None):
 @router.post("/register")
 @router.post("/auth/register")
 def register(req: Optional[RegisterRequest] = None):
+    name = req.name if req and req.name else "Clinical User"
+    email = req.email if req and req.email else "user@epilepsy-ai.org"
+    
+    token = create_access_token({
+        "sub": name,
+        "email": email,
+        "role": "Clinician"
+    })
+    
     return {
         "status": "success",
         "message": "Clinical account created successfully.",
-        "userId": "usr-2026-01"
+        "token": token,
+        "userId": f"usr-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
     }
 
 @router.post("/patients")

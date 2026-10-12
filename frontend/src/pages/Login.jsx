@@ -2,13 +2,15 @@ import React, { useState } from 'react';
 import { Activity, Lock, User, ArrowRight, Mail, ShieldCheck } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 
+import { healthcareAPI } from '../services/api';
+
 const Login = () => {
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({ doctorId: '', password: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     if (!credentials.doctorId || !credentials.password) {
       setError("Please fill in all fields");
@@ -18,13 +20,19 @@ const Login = () => {
     setError('');
     setIsLoading(true);
     
-    // Simulate backend validation & loading
-    setTimeout(() => {
-      setIsLoading(false);
-      localStorage.setItem("doctorName", `Dr. ${credentials.doctorId}`);
+    try {
+      const res = await healthcareAPI.login(credentials);
+      if (res && res.token) {
+        localStorage.setItem("token", res.token);
+      }
+      localStorage.setItem("doctorName", res.doctorName || `Dr. ${credentials.doctorId}`);
       localStorage.setItem("doctorId", credentials.doctorId);
       navigate('/dashboard');
-    }, 1500);
+    } catch (err) {
+      setError(err.message || "Failed to authenticate. Please check your credentials.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e) => {

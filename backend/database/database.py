@@ -34,13 +34,13 @@ def get_connection():
             return conn
         except Exception as e:
             # Fallback to local SQLite if PostgreSQL connection fails
-            conn = sqlite3.connect(DEFAULT_SQLITE_PATH, check_same_thread=False)
+            conn = sqlite3.connect(DEFAULT_SQLITE_PATH, check_same_thread=False, timeout=30.0)
             conn.row_factory = sqlite3.Row
             return conn
     else:
         # Extract SQLite path
         sqlite_path = db_url.replace("sqlite:///", "") if db_url.startswith("sqlite:///") else DEFAULT_SQLITE_PATH
-        conn = sqlite3.connect(sqlite_path, check_same_thread=False)
+        conn = sqlite3.connect(sqlite_path, check_same_thread=False, timeout=30.0)
         conn.row_factory = sqlite3.Row
         return conn
 
