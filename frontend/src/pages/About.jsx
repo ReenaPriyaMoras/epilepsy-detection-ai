@@ -1,8 +1,11 @@
-import React from 'react';
-import { ShieldCheck, Brain, Server, Zap, GitBranch, Mail, Building, Users, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { ShieldCheck, Brain, Server, Zap, GitBranch, Mail, Building, Users, Activity, GraduationCap } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import ContactModal from '../components/ContactModal';
 
 const About = () => {
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-blue-100">
       {/* Public Header */}
@@ -25,14 +28,22 @@ const About = () => {
         <div className="absolute top-0 right-0 w-[40rem] h-[40rem] bg-blue-500/10 rounded-full blur-3xl -mr-40 -mt-40 pointer-events-none"></div>
         <div className="max-w-4xl mx-auto px-6 relative z-10 text-center animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 font-medium text-sm mb-8">
-            <Users className="w-4 h-4" /> Student Research Project
+            <Users className="w-4 h-4" /> Academic Major Project
           </div>
           <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6">
-            Pioneering Clinical AI for <br/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">Epilepsy Detection</span>
+            EpiDetect AI
           </h1>
-          <p className="text-lg md:text-xl text-slate-300 leading-relaxed max-w-3xl mx-auto">
-            We are students developing an AI-powered Epilepsy Detection and Clinical Decision Support System using EEG signals. Our mission is to bridge the gap between advanced deep learning and practical clinical neurology.
-          </p>
+          <div className="space-y-4 text-base md:text-lg text-slate-300 leading-relaxed max-w-3xl mx-auto">
+            <p>
+              EpiDetect AI is an academic major project developed by the Department of Intelligent Computing and Business Systems (ICBS), St Joseph Engineering College, Mangaluru.
+            </p>
+            <p>
+              The project presents an intelligent web-based framework for automated epileptic seizure detection using EEG signals through a hybrid Graph Neural Network (GNN), BiLSTM, and BiGRU architecture.
+            </p>
+            <p>
+              The platform enables EEG upload, preprocessing, seizure prediction, explainable AI visualization, report generation, and clinical decision support while providing a modern and user-friendly interface.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -47,21 +58,43 @@ const About = () => {
           </div>
           <div className="grid md:grid-cols-2 gap-8">
             {[
-              { icon: Zap, title: "Automated Analysis", desc: "Reduce neurologist workload by automatically screening hours of EEG recordings in seconds." },
-              { icon: ShieldCheck, title: "Clinical Reliability", desc: "Achieve high sensitivity and specificity using hybrid neural architectures (GNN-BiLSTM)." },
-              { icon: Brain, title: "Explainable AI (XAI)", desc: "Provide transparent reasoning for model predictions so clinicians can trust the results." },
-              { icon: Server, title: "Secure Infrastructure", desc: "Maintain patient privacy with HIPAA-inspired data handling and secure backend systems." }
+              { 
+                icon: Zap, 
+                title: "Objective 1", 
+                desc: "To design a hybrid GNN–BiLSTM–BiGRU model for automated epileptic seizure detection using multi-channel EEG signals." 
+              },
+              { 
+                icon: ShieldCheck, 
+                title: "Objective 2", 
+                desc: "To develop a web-based platform for EEG upload, preprocessing, seizure prediction, visualization, and report generation." 
+              },
+              { 
+                icon: Brain, 
+                title: "Objective 3", 
+                desc: "To improve prediction performance using standardized preprocessing, statistical feature extraction, and Explainable AI techniques." 
+              },
+              { 
+                icon: Server, 
+                title: "Objective 4", 
+                desc: "To evaluate the proposed framework using standard performance metrics and compare it with existing methods." 
+              }
             ].map((obj, i) => {
               const Icon = obj.icon;
               return (
-                <div key={i} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={i} 
+                  className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow"
+                >
                   <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
                     <Icon className="w-7 h-7 text-blue-600" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-3">{obj.title}</h3>
-                  <p className="text-slate-500 leading-relaxed">{obj.desc}</p>
+                  <p className="text-slate-500 leading-relaxed">
+                    <span className="font-semibold text-slate-700">{i + 1}. </span>
+                    {obj.desc}
+                  </p>
                 </div>
-              )
+              );
             })}
           </div>
         </section>
@@ -78,7 +111,7 @@ const About = () => {
                   { name: "Tailwind CSS", role: "Styling" },
                   { name: "FastAPI", role: "Backend API" },
                   { name: "PyTorch", role: "Deep Learning" },
-                  { name: "GNN + BiLSTM", role: "Architecture" },
+                  { name: "GNN + BiLSTM + BiGRU", role: "Architecture" },
                   { name: "EDF Core", role: "Signal Processing" },
                   { name: "Plotly", role: "Visualization" },
                   { name: "Docker", role: "Deployment" },
@@ -93,33 +126,46 @@ const About = () => {
           </div>
         </section>
 
-        {/* Team */}
+        {/* Academic Details */}
         <section>
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-slate-900">Academic Context</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Academic Information</h2>
             <div className="w-20 h-1.5 bg-blue-600 mx-auto mt-6 rounded-full"></div>
           </div>
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="grid md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-200">
-              <div className="p-10 flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mb-4">
-                  <Building className="w-8 h-8 text-blue-600" />
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 md:p-12">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-100 transition-colors">
+                <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 text-blue-600">
+                  <Building className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">University / Institution</h3>
-                <p className="text-slate-500 mt-2">Department of Computer Science & Engineering</p>
-                <div className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium text-slate-600">
-                  [University Name Placeholder]
-                </div>
+                <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Institution & Location</span>
+                <h3 className="text-lg font-bold text-slate-800 mt-2">St Joseph Engineering College</h3>
+                <p className="text-sm font-semibold text-blue-600 mt-1">Mangaluru</p>
               </div>
-              <div className="p-10 flex flex-col items-center text-center">
-                <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mb-4">
-                  <Users className="w-8 h-8 text-emerald-600" />
+
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-indigo-100 transition-colors">
+                <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mb-4 text-indigo-600">
+                  <Activity className="w-7 h-7" />
                 </div>
-                <h3 className="text-lg font-bold text-slate-800">Project Supervision</h3>
-                <p className="text-slate-500 mt-2">Guided by experienced faculty members in AI and Healthcare.</p>
-                <div className="mt-4 px-4 py-2 bg-slate-100 rounded-lg text-sm font-medium text-slate-600">
-                  [Supervisor Name Placeholder]
+                <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Department</span>
+                <h3 className="text-base font-bold text-slate-800 mt-2">Department of Intelligent Computing and Business Systems (ICBS)</h3>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-100 transition-colors">
+                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mb-4 text-emerald-600">
+                  <Brain className="w-7 h-7" />
                 </div>
+                <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Programme</span>
+                <h3 className="text-base font-bold text-slate-800 mt-2">Artificial Intelligence and Machine Learning</h3>
+              </div>
+
+              <div className="flex flex-col items-center text-center p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-amber-100 transition-colors">
+                <div className="w-14 h-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 text-amber-600">
+                  <GraduationCap className="w-7 h-7" />
+                </div>
+                <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Batch</span>
+                <h3 className="text-lg font-bold text-slate-800 mt-2">Batch of 2027</h3>
+                <p className="text-sm font-medium text-slate-500 mt-1">Academic Year 2023–2027</p>
               </div>
             </div>
           </div>
@@ -134,11 +180,20 @@ const About = () => {
                <p className="text-slate-300 max-w-2xl mx-auto mb-10">
                  This project represents a significant step forward in our academic journey. The source code and documentation will be available for peer review and further research.
                </p>
-               <div className="flex justify-center gap-4">
-                 <button className="flex items-center gap-2 px-6 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors">
+               <div className="flex flex-wrap justify-center gap-4">
+                 <a 
+                   href="https://github.com/ReenaPriyaMoras/epilepsy-detection-ai"
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 font-bold rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                 >
                    <GitBranch className="w-5 h-5" /> View Repository
-                 </button>
-                 <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
+                 </a>
+                 <button 
+                   type="button"
+                   onClick={() => setIsContactModalOpen(true)}
+                   className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors cursor-pointer"
+                 >
                    <Mail className="w-5 h-5" /> Contact Team
                  </button>
                </div>
@@ -147,6 +202,12 @@ const About = () => {
         </section>
 
       </div>
+
+      {/* Contact Team Modal */}
+      <ContactModal 
+        isOpen={isContactModalOpen} 
+        onClose={() => setIsContactModalOpen(false)} 
+      />
     </div>
   );
 };

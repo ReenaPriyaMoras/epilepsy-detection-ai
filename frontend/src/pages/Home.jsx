@@ -212,15 +212,16 @@ const Home = () => {
           <div>
             <h4 className="text-white font-bold mb-6">Institution</h4>
             <ul className="space-y-4">
-              <li><span className="hover:text-white transition-colors cursor-default">Department of Computer Science</span></li>
-              <li><span className="hover:text-white transition-colors cursor-default">[University Name]</span></li>
+              <li><span className="hover:text-white transition-colors cursor-default">Department of Intelligent Computing and Business Systems</span></li>
+              <li><span className="hover:text-white transition-colors cursor-default">St Joseph Engineering College, Mangaluru</span></li>
+              <li><span className="hover:text-white transition-colors cursor-default">Artificial Intelligence and Machine Learning (Batch of 2027)</span></li>
               <li><Link to="/about" className="hover:text-blue-400 transition-colors">About the Project</Link></li>
             </ul>
           </div>
         </div>
         <div className="max-w-7xl mx-auto px-6 mt-16 pt-8 border-t border-slate-800 text-sm text-center md:text-left flex flex-col md:flex-row justify-between items-center">
           <p>© 2024 EpiDetect AI Research Project. All rights reserved.</p>
-          <p className="mt-2 md:mt-0">Not for actual medical diagnosis without physician supervision.</p>
+          <p className="mt-2 md:mt-0">Not for actual medical diagnosis without physician consultation.</p>
         </div>
       </footer>
 
