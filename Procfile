@@ -1,1 +1,1 @@
-web: sh -c "cd backend && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 65"
+web: sh -c "cd backend && uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 75 --proxy-headers --forwarded-allow-ips='*'"

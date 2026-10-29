@@ -44,22 +44,48 @@ def debug_system():
     except Exception:
         pass
 
+    db_status = "connected"
+    try:
+        from database.database import get_dashboard_stats
+        get_dashboard_stats()
+    except Exception:
+        db_status = "disconnected"
+
+    proc_rss = round(_get_process_rss_mb(), 2)
+    avail_ram = round(vm.available / (1024 * 1024), 2)
+    cpu_usage = psutil.cpu_percent()
+    uptime = round(time.time() - START_TIME, 2)
+
     return {
         "status": "online",
+        "worker_uptime": uptime,
+        "uptime_seconds": uptime,
         "worker_pid": os.getpid(),
-        "uptime_seconds": round(time.time() - START_TIME, 2),
-        "environment": settings.ENVIRONMENT,
+        "application_version": settings.APP_VERSION,
         "app_version": settings.APP_VERSION,
+        "environment": settings.ENVIRONMENT,
+        "database_connectivity": db_status,
+        "model_loaded_status": {
+            "epieeg_gnn_bilstm_bigru": epieeg_loaded,
+            "bonn": bonn_loaded,
+            "all_loaded": epieeg_loaded and bonn_loaded
+        },
+        "process_rss": f"{proc_rss} MB",
+        "process_rss_mb": proc_rss,
+        "available_ram": f"{avail_ram} MB",
+        "available_ram_mb": avail_ram,
+        "cpu_usage": f"{cpu_usage}%",
+        "cpu_usage_pct": cpu_usage,
         "python_version": platform.python_version(),
         "platform": platform.platform(),
         "memory": {
-            "process_rss_mb": round(_get_process_rss_mb(), 2),
+            "process_rss_mb": proc_rss,
             "system_total_mb": round(vm.total / (1024 * 1024), 2),
-            "system_available_mb": round(vm.available / (1024 * 1024), 2),
+            "system_available_mb": avail_ram,
             "system_used_percent": vm.percent,
         },
         "cpu": {
-            "cpu_percent": psutil.cpu_percent(),
+            "cpu_percent": cpu_usage,
             "cpu_count_logical": psutil.cpu_count(logical=True),
             "cpu_count_physical": psutil.cpu_count(logical=False),
         },

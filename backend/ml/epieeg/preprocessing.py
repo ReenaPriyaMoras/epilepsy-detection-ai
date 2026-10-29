@@ -1,4 +1,5 @@
 import os
+import time
 import tempfile
 import psutil
 import logging
@@ -77,9 +78,11 @@ def extract_all_features(eeg: np.ndarray) -> np.ndarray:
     feature_matrix = np.nan_to_num(feature_matrix, copy=False, nan=0.0, posinf=0.0, neginf=0.0)
     return feature_matrix.astype(np.float32)
 
-def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.ndarray:
+from core.telemetry import log_stage_telemetry
+
+def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0, req_id: str = "N/A") -> np.ndarray:
     """
-    Optimized clinical preprocessing pipeline for EpiEEG EDF files.
+    Optimized clinical preprocessing pipeline for EpiEEG EDF files with stage telemetry.
     - Inspects EDF header via preload=False
     - Determines sampling frequency and bounds analysis to clinical window (30s)
     - Loads ONLY the required channels (up to 43) and samples
@@ -94,24 +97,41 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
     tmp_path = None
     eeg = None
 
-    # Step 3: Initial RAM check
-    ram_init = _get_process_rss_mb()
+    t_pipe_start = time.perf_counter()
 
     # 1. Parse EDF securely with safe temp file cleanup
     try:
+        t0 = time.perf_counter()
         fd, tmp_path = tempfile.mkstemp(suffix=".edf")
         with os.fdopen(fd, 'wb') as f:
             f.write(file_bytes)
+        t_tmp = (time.perf_counter() - t0) * 1000
+        log_stage_telemetry(
+            "Temporary file created",
+            req_id=req_id,
+            duration_ms=t_tmp,
+            extra=f"Path: {tmp_path} | Size: {len(file_bytes)}B"
+        )
         
         # Read header only without loading signal into RAM
         try:
+            t0 = time.perf_counter()
             raw = mne.io.read_raw_edf(tmp_path, preload=False, verbose=False)
+            t_open = (time.perf_counter() - t0) * 1000
+            log_stage_telemetry(
+                "EDF opened",
+                req_id=req_id,
+                duration_ms=t_open,
+                extra=f"Preload=False"
+            )
+
+            t0 = time.perf_counter()
             total_channels = len(raw.ch_names)
             sfreq = float(raw.info.get('sfreq', 256.0))
             n_times = raw.n_times
             total_duration_sec = n_times / sfreq if sfreq > 0 else 0.0
             
-            # Step 4: Determine analysis sample window
+            # Determine analysis sample window
             if max_window_seconds and max_window_seconds > 0:
                 max_samples = int(sfreq * max_window_seconds)
                 stop_sample = min(n_times, max_samples) if max_samples > 0 else n_times
@@ -119,16 +139,28 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
                 stop_sample = n_times
             
             window_duration_sec = stop_sample / sfreq if sfreq > 0 else 0.0
-            picks = list(range(min(total_channels, NUM_NODES)))
-            
+            t_header = (time.perf_counter() - t0) * 1000
+            log_stage_telemetry(
+                "Header parsed",
+                req_id=req_id,
+                duration_ms=t_header,
+                extra=(
+                    f"Sfreq={sfreq}Hz | TotalChannels={total_channels} | "
+                    f"TotalSamples={n_times} ({total_duration_sec:.1f}s) | "
+                    f"WindowSamples=0..{stop_sample} ({window_duration_sec:.1f}s)"
+                )
+            )
+
             # Load ONLY required window & channels
+            t0 = time.perf_counter()
+            picks = list(range(min(total_channels, NUM_NODES)))
             eeg = raw.get_data(picks=picks, start=0, stop=stop_sample)
-            ram_after_load = _get_process_rss_mb()
-            
-            logger.info(
-                f"EDF Preprocessing [Step 4] | Sfreq: {sfreq}Hz | Total Channels: {total_channels} | "
-                f"Total Samples: {n_times} ({total_duration_sec:.1f}s) | Selected Window: 0 to {stop_sample} ({window_duration_sec:.1f}s) | "
-                f"Signal Shape: {eeg.shape} | Dtype: {eeg.dtype} | Buffer: {eeg.nbytes / (1024*1024):.2f}MB | RAM: {ram_after_load:.1f}MB"
+            t_load = (time.perf_counter() - t0) * 1000
+            log_stage_telemetry(
+                "Signal loaded",
+                req_id=req_id,
+                duration_ms=t_load,
+                extra=f"Shape={eeg.shape} | Dtype={eeg.dtype} | Buffer={eeg.nbytes / (1024*1024):.2f}MB"
             )
             
             try:
@@ -137,6 +169,7 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
                 pass
             del raw
         except (Exception, AssertionError) as pe:
+            log_stage_telemetry("EDF header parse error", req_id=req_id, error=pe)
             raise ValueError(f"Corrupted or invalid EDF recording structure: {str(pe)}")
     finally:
         if tmp_path and os.path.exists(tmp_path):
@@ -157,7 +190,6 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
 
     # 2. Adjust spatial dimension (channels) to precisely 43
     num_channels = eeg.shape[0]
-
     if num_channels < NUM_NODES:
         padding = np.zeros((NUM_NODES - num_channels, eeg.shape[1]), dtype=np.float32)
         eeg = np.vstack([eeg, padding])
@@ -165,16 +197,19 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
         eeg = eeg[:NUM_NODES]
 
     # 3. Extract 17 features across all channels at once
+    t0 = time.perf_counter()
     feature_matrix = extract_all_features(eeg)
     del eeg
-
-    # Step 5: Feature validation before scaling
-    nan_before = int(np.isnan(feature_matrix).sum())
-    inf_before = int(np.isinf(feature_matrix).sum())
-    min_before = float(np.min(feature_matrix))
-    max_before = float(np.max(feature_matrix))
+    t_feat = (time.perf_counter() - t0) * 1000
+    log_stage_telemetry(
+        "Feature extraction",
+        req_id=req_id,
+        duration_ms=t_feat,
+        extra=f"Shape={feature_matrix.shape} | Dtype={feature_matrix.dtype}"
+    )
 
     # 4. Scaling & Dimension Validation
+    t0 = time.perf_counter()
     loader = EpiEEGModelLoader.load()
     scale = np.asarray(loader.scaler_scale, dtype=np.float32).copy()
     mean = np.asarray(loader.scaler_mean, dtype=np.float32)
@@ -195,17 +230,14 @@ def preprocess_edf(file_bytes: bytes, max_window_seconds: float = 30.0) -> np.nd
     feature_matrix = np.clip(feature_matrix, -10.0, 10.0)
     feature_matrix = feature_matrix.astype(np.float32)
 
-    nan_after = int(np.isnan(feature_matrix).sum())
-    inf_after = int(np.isinf(feature_matrix).sum())
-    min_after = float(np.min(feature_matrix))
-    max_after = float(np.max(feature_matrix))
-    ram_after_feat = _get_process_rss_mb()
-
-    logger.info(
-        f"Feature Extraction [Step 5] | Shape: {feature_matrix.shape} | Dtype: {feature_matrix.dtype} | "
-        f"Pre-scale [Min: {min_before:.2f}, Max: {max_before:.2f}, NaN: {nan_before}, Inf: {inf_before}] | "
-        f"Post-scale [Min: {min_after:.2f}, Max: {max_after:.2f}, NaN: {nan_after}, Inf: {inf_after}] | "
-        f"RAM: {ram_after_feat:.1f}MB (delta: {ram_after_feat - ram_init:+.1f}MB)"
+    t_scale = (time.perf_counter() - t0) * 1000
+    min_val = float(np.min(feature_matrix))
+    max_val = float(np.max(feature_matrix))
+    log_stage_telemetry(
+        "Scaling",
+        req_id=req_id,
+        duration_ms=t_scale,
+        extra=f"Shape={feature_matrix.shape} | Min={min_val:.2f} | Max={max_val:.2f}"
     )
 
     return feature_matrix

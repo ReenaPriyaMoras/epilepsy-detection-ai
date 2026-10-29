@@ -79,9 +79,22 @@ async def predict_eeg(request: Request, file: UploadFile = File(...)):
     """
     req_id = getattr(request.state, "request_id", "N/A")
     t0 = time.perf_counter()
+    log_stage_telemetry(
+        "Bonn Request received",
+        req_id=req_id,
+        duration_ms=0.0,
+        extra=f"Filename={file.filename} | ContentType={file.content_type}"
+    )
+
     file_bytes, filename, file_size = await _read_and_validate_edf(file)
     t1 = time.perf_counter()
     read_time_ms = (t1 - t0) * 1000
+    log_stage_telemetry(
+        "Bonn Upload completed",
+        req_id=req_id,
+        duration_ms=read_time_ms,
+        extra=f"Filename={filename} | Size={file_size}B"
+    )
 
     try:
         t2 = time.perf_counter()
@@ -114,15 +127,32 @@ async def predict_eeg(request: Request, file: UploadFile = File(...)):
                 result["id"] = saved_record["id"]
                 
             result["request_id"] = req_id
+            log_stage_telemetry(
+                "Bonn Database save",
+                req_id=req_id,
+                extra=f"AnalysisID={result.get('id')} | Prediction={prediction}"
+            )
             log_audit(filename, prediction, confidence, processing_time_ms, "success")
             log_inference_performance(
                 filename, file_size, read_time_ms, 0.0, processing_time_ms, 0.0, total_time_ms, prediction, confidence
             )
         except Exception as ex:
-            logger.error(f"Persistence error (Bonn): {ex}\n{traceback.format_exc()}")
+            log_stage_telemetry("Bonn Database save error", req_id=req_id, error=ex)
 
         if 'dataset' not in result:
             result['dataset'] = "Bonn"
+
+        try:
+            resp_size_bytes = len(json.dumps(result, default=str).encode('utf-8'))
+        except Exception:
+            resp_size_bytes = 0
+
+        log_stage_telemetry(
+            "Bonn Response returned",
+            req_id=req_id,
+            duration_ms=total_time_ms,
+            extra=f"ResponseSize={resp_size_bytes}B | TotalTime={total_time_ms:.1f}ms"
+        )
         return result
 
     except asyncio.TimeoutError as e:
@@ -144,6 +174,9 @@ async def predict_eeg(request: Request, file: UploadFile = File(...)):
         logger.error(f"[Req: {req_id}] Error processing Bonn EDF file {filename}: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=422, detail=f"Unable to process EDF file: {str(e)} (Request ID: {req_id})")
 
+import json
+from core.telemetry import log_stage_telemetry
+
 @router.post("/epieeg", response_model=InferenceResult)
 @router.post("/upload", response_model=InferenceResult)
 @router.post("/analyze", response_model=InferenceResult)
@@ -154,32 +187,39 @@ async def predict_epieeg(request: Request, file: UploadFile = File(...)):
     """
     req_id = getattr(request.state, "request_id", "N/A")
     t0 = time.perf_counter()
-    ram_req_start = _get_process_rss_mb()
-    logger.info(f"[Req: {req_id}] Endpoint /epieeg invoked | RAM: {ram_req_start:.1f}MB")
+    log_stage_telemetry(
+        "Request received",
+        req_id=req_id,
+        duration_ms=0.0,
+        extra=f"Filename={file.filename} | ContentType={file.content_type}"
+    )
 
     file_bytes, filename, file_size = await _read_and_validate_edf(file)
     t1 = time.perf_counter()
     read_time_ms = (t1 - t0) * 1000
-    ram_after_upload = _get_process_rss_mb()
-    logger.info(f"[Req: {req_id}] File uploaded: {filename} ({file_size}B) | Read Time: {read_time_ms:.1f}ms | RAM: {ram_after_upload:.1f}MB")
+    log_stage_telemetry(
+        "Upload completed",
+        req_id=req_id,
+        duration_ms=read_time_ms,
+        extra=f"Filename={filename} | Size={file_size}B ({file_size/(1024*1024):.2f}MB)"
+    )
 
     # Execute with Timeout in thread pool
     try:
         t2 = time.perf_counter()
         loop = asyncio.get_running_loop()
         result = await asyncio.wait_for(
-            loop.run_in_executor(None, epieeg_predict, file_bytes),
+            loop.run_in_executor(None, epieeg_predict, file_bytes, req_id),
             timeout=settings.INFERENCE_TIMEOUT_SECONDS
         )
         t3 = time.perf_counter()
         processing_time_ms = (t3 - t2) * 1000
 
-        # Stage 10: Database Auto-Persistence
+        # Stage: Database Auto-Persistence
         t_db_start = time.perf_counter()
+        prediction = result.get("prediction", "Unknown")
+        confidence = result.get("confidence_score", 0.0)
         try:
-            prediction = result.get("prediction", "Unknown")
-            confidence = result.get("confidence_score", 0.0)
-            
             saved_record = insert_analysis({
                 "filename": filename,
                 "file_size": f"{file_size / (1024*1024):.2f} MB" if file_size > 1024*1024 else f"{file_size / 1024:.1f} KB",
@@ -195,8 +235,12 @@ async def predict_epieeg(request: Request, file: UploadFile = File(...)):
                 result["id"] = saved_record["id"]
                 
             t_db = (time.perf_counter() - t_db_start) * 1000
-            ram_db = _get_process_rss_mb()
-            logger.info(f"[Stage 10] Database saved ID: {result.get('id')} | Time: {t_db:.1f}ms | RAM: {ram_db:.1f}MB")
+            log_stage_telemetry(
+                "Database save",
+                req_id=req_id,
+                duration_ms=t_db,
+                extra=f"AnalysisID={result.get('id')} | Prediction={prediction}"
+            )
             
             result["request_id"] = req_id
             log_audit(filename, prediction, confidence, processing_time_ms, "success")
@@ -204,29 +248,38 @@ async def predict_epieeg(request: Request, file: UploadFile = File(...)):
                 filename, file_size, read_time_ms, 0.0, processing_time_ms, 0.0, (t3 - t0) * 1000, prediction, confidence
             )
         except Exception as ex:
-            logger.error(f"[Req: {req_id}] Persistence notice (EpiEEG): {ex}\n{traceback.format_exc()}")
+            log_stage_telemetry("Database save error", req_id=req_id, error=ex)
             
-        # Stage 11: Response return
+        # Stage: Response returned
         total_time_ms = (time.perf_counter() - t0) * 1000
-        ram_final = _get_process_rss_mb()
-        logger.info(f"[Stage 11] Response returned | Total: {total_time_ms:.1f}ms | RAM: {ram_final:.1f}MB")
+        try:
+            resp_size_bytes = len(json.dumps(result, default=str).encode('utf-8'))
+        except Exception:
+            resp_size_bytes = 0
+
+        log_stage_telemetry(
+            "Response returned",
+            req_id=req_id,
+            duration_ms=total_time_ms,
+            extra=f"ResponseSize={resp_size_bytes}B | TotalTime={total_time_ms:.1f}ms"
+        )
         return result
 
     except asyncio.TimeoutError as e:
+        log_stage_telemetry("TimeoutError", req_id=req_id, error=e, extra=f"Timeout after {settings.INFERENCE_TIMEOUT_SECONDS}s")
         try:
             log_error(e, filename)
             log_audit(filename, "N/A", 0.0, settings.INFERENCE_TIMEOUT_SECONDS * 1000, "timeout")
         except Exception:
             pass
-        logger.error(f"[Req: {req_id}] Timeout processing file {filename} after {settings.INFERENCE_TIMEOUT_SECONDS}s\n{traceback.format_exc()}")
         raise HTTPException(status_code=504, detail=f"Request timed out processing EDF file (Request ID: {req_id})")
     except HTTPException as he:
         raise he
     except Exception as e:
+        log_stage_telemetry("InferenceFailure", req_id=req_id, error=e)
         try:
             log_error(e, filename)
             log_audit(filename, "N/A", 0.0, 0.0, "error")
         except Exception:
             pass
-        logger.error(f"[Req: {req_id}] Error processing EDF file {filename}: {str(e)}\n{traceback.format_exc()}")
         raise HTTPException(status_code=422, detail=f"Unable to process EDF file: {str(e)} (Request ID: {req_id})")

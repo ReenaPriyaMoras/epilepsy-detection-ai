@@ -36,5 +36,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request, os; sys_port = os.environ.get('PORT', '8000'); urllib.request.urlopen(f'http://127.0.0.1:{sys_port}/health', timeout=3)" || exit 1
 
-# Start FastAPI server using uvicorn binding dynamically to $PORT
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 65"]
+# Start FastAPI server using uvicorn binding dynamically to $PORT with production reverse-proxy support
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --timeout-keep-alive 75 --proxy-headers --forwarded-allow-ips='*'"]

@@ -68,6 +68,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"⚠️ Bonn model pre-warm notice: {e}")
 
+    # 4. PyTorch JIT / Kernel & Autograd Execution Pre-warming
+    try:
+        from ml.epieeg.model import EpiEEGModelLoader
+        loader = EpiEEGModelLoader.load()
+        synth_x = torch.zeros((1, 43, 17), dtype=torch.float32)
+        with torch.inference_mode():
+            _ = loader.model(synth_x, loader.adj_matrix)
+        if settings.ENABLE_XAI:
+            from ml.epieeg.explainability import generate_explanation
+            _ = generate_explanation(loader, np.zeros((43, 17), dtype=np.float32), "Non-Epileptic")
+        logger.info("✅ PyTorch execution graphs, MKL/oneDNN kernels, and autograd engines pre-warmed.")
+    except Exception as e:
+        logger.warning(f"⚠️ Synthetic forward pre-warm notice: {e}")
+
     logger.info("=================================================================")
     logger.info("✅ Application initialization complete. Ready for inference requests.")
     yield
@@ -158,6 +172,9 @@ def root():
 
 @app.get("/health")
 def health():
+    import os
+    import psutil
+    
     db_status = "connected"
     try:
         from database.database import get_dashboard_stats
@@ -174,13 +191,31 @@ def health():
     except Exception:
         model_status = "unloaded"
 
+    vm = psutil.virtual_memory()
+    proc = psutil.Process(os.getpid())
+    rss_mb = round(proc.memory_info().rss / (1024 * 1024), 2)
+    avail_ram_mb = round(vm.available / (1024 * 1024), 2)
+    cpu_pct = proc.cpu_percent(interval=None)
+    uptime = round(time.time() - START_TIME, 2)
+
     return {
         "status": "healthy" if db_status == "connected" and model_status == "loaded" else "degraded",
         "backend": "online",
         "database": db_status,
+        "database_connectivity": db_status,
         "model": model_status,
-        "version": "2.0.0",
-        "uptime_seconds": round(time.time() - START_TIME, 2)
+        "model_loaded_status": model_status,
+        "version": settings.APP_VERSION,
+        "application_version": settings.APP_VERSION,
+        "uptime_seconds": uptime,
+        "worker_uptime": uptime,
+        "worker_pid": os.getpid(),
+        "process_rss": f"{rss_mb} MB",
+        "process_rss_mb": rss_mb,
+        "available_ram": f"{avail_ram_mb} MB",
+        "available_ram_mb": avail_ram_mb,
+        "cpu_usage": f"{cpu_pct}%",
+        "cpu_usage_pct": cpu_pct
     }
 
 

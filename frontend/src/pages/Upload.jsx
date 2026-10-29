@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { UploadCloud, File, AlertCircle, PlayCircle, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { healthcareAPI } from "../services/api";
+import { healthcareAPI, categorizeApiError } from "../services/api";
 import toast, { Toaster } from "react-hot-toast";
 
 const Upload = () => {
@@ -11,6 +11,11 @@ const Upload = () => {
   const [isPredicting, setIsPredicting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [currentStage, setCurrentStage] = useState("");
+
+  // Proactive background ping on mount to wake up sleeping container / establish TCP connection
+  useEffect(() => {
+    healthcareAPI.healthCheck().catch(() => {});
+  }, []);
 
   const handleFileSelect = (e) => {
     const selectedFile = e.target.files[0];
@@ -63,13 +68,14 @@ const Upload = () => {
     setCurrentStage("Uploading EDF...");
     
     const startTime = performance.now();
+    let stageInterval = null;
 
     try {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Simulate multi-stage loading visually while the actual backend runs
-      const stageInterval = setInterval(() => {
+      // Multi-stage visual feedback while model executes
+      stageInterval = setInterval(() => {
         setCurrentStage((prev) => {
           if (prev === "Uploading EDF..." && uploadProgress === 100) return "Reading EEG...";
           if (prev === "Reading EEG...") return "Extracting Features...";
@@ -81,9 +87,11 @@ const Upload = () => {
       }, 2500);
 
       const result = await healthcareAPI.predictEEG(formData, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-        if (percentCompleted === 100) setCurrentStage("Reading EEG...");
+        if (progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+          if (percentCompleted === 100) setCurrentStage("Reading EEG...");
+        }
       });
 
       clearInterval(stageInterval);
@@ -108,16 +116,35 @@ const Upload = () => {
         },
       });
     } catch (error) {
+      if (stageInterval) clearInterval(stageInterval);
       console.error("Prediction Error:", error);
-      if (error.response) {
-        toast.error(error.response.data.detail || "Backend returned an error.");
-      } else if (error.request) {
-        toast.error("Cannot connect to backend.");
+
+      const parsedError = error.category ? error : categorizeApiError(error);
+      const errorMsg = parsedError.message || error.message || "An unexpected error occurred.";
+
+      // Production error categorization - never display "Cannot connect to backend" unless truly unreachable
+      if (parsedError.category === "validation") {
+        toast.error(errorMsg, { duration: 6000 });
+      } else if (parsedError.category === "timeout") {
+        toast.error(errorMsg, { duration: 7000 });
+      } else if (parsedError.category === "processing_running") {
+        toast.error(errorMsg, { duration: 7000 });
+      } else if (parsedError.category === "server_restarted") {
+        toast.error(errorMsg, { duration: 6000 });
+      } else if (parsedError.category === "network_interruption") {
+        toast.error(errorMsg, { duration: 6000 });
+      } else if (parsedError.category === "backend_unavailable") {
+        toast.error("Cannot connect to backend. The service may be offline or starting up.", { duration: 6000 });
+      } else if (error.response?.data?.detail) {
+        toast.error(error.response.data.detail, { duration: 5000 });
       } else {
-        toast.error("Unexpected error occurred.");
+        toast.error(errorMsg, { duration: 5000 });
       }
+
       setIsPredicting(false);
       setCurrentStage("");
+    } finally {
+      if (stageInterval) clearInterval(stageInterval);
     }
   };
 
